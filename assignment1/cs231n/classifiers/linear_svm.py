@@ -36,6 +36,8 @@ def svm_loss_naive(W, X, y, reg):
                 continue
             margin = scores[j] - correct_class_score + 1  # note delta = 1
             if margin > 0:
+                dW[:, j] += X[i, :]  # * (1 if j == y[i] else -1)  # derivative w.r.t. W[:, j]
+                dW[:, y[i]] -= X[i, :]  # derivative w.r.t. W[:, y[i]]
                 loss += margin
 
     # Right now the loss is a sum over all training examples, but we want it
@@ -55,7 +57,10 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Store the gradient in dW.
+    dW /= num_train
+    # Add the regularization gradient.
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -77,8 +82,20 @@ def svm_loss_vectorized(W, X, y, reg):
     # result in loss.                                                           #
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
+    delta = 1.0
+    num_train = X.shape[0]
 
-    pass
+    scores = X.dot(W)
+    correct_class_score = scores[[np.arange(num_train), y]]
+
+    margins = np.maximum(
+        0, scores - correct_class_score[:, np.newaxis] + delta)
+    # the subtraction of delta is to correct for the contribution of the
+    # correct class
+    loss = np.sum(margins) / num_train - delta
+
+    # Add regularization to the loss.
+    loss += 0.5 * reg * np.sum(W * W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +110,28 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # print("X ~", X.shape)
+    # print("y ~", y.shape)
+    # print("W ~", W.shape)
+    # print("scores ~", scores.shape)
+    # print("correct_class_score ~", correct_class_score.shape)
+    # print("margins ~", margins.shape)
+
+    num_train = X.shape[0]
+    num_classes = W.shape[1]
+
+    marginsGZ = margins > 0
+
+    oneHotScores = np.zeros((num_classes, num_train))
+    oneHotScores[y, range(num_train)] = 1
+    # print("marginsGZ ~", marginsGZ.shape)
+    # print("oneHotScores ~", oneHotScores.shape)
+
+    # it only took me 3h to write the following line:
+    dW = np.dot(X.T, marginsGZ - (oneHotScores * np.sum(marginsGZ, axis=1)).T)
+    dW /= num_train
+
+    dW += reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
